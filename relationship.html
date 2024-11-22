@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Network Graph Visualization</title>
+    <script type="importmap">
+    {
+        "imports": {
+        "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js",
+        "three/examples/jsm/controls/OrbitControls": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/controls/OrbitControls.js"
+        }
+    }
+    </script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background-color: #1a1a2e;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+            max-width: 300px;
+        }
+        #nodeDetails {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+            max-width: 250px;
+            display: none;
+        }
+        #home-link {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 10px;
+            text-decoration: none;
+            border-radius: 3px;
+            color: white;
+            z-index: 100;
+        }
+        #columnSelectors {
+            margin-top: 10px;
+        }
+        #columnSelectors label {
+            display: block;
+            margin-top: 5px;
+            color: white;
+        }
+        #columnSelectors select {
+            width: 100%;
+            background-color: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        #plotButton {
+            margin-top: 10px;
+            width: 100%;
+            background-color: #4a4e69;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <label for="fileInput">Upload Network CSV:</label>
+        <input type="file" id="fileInput" accept=".csv" />
+        <div id="columnSelectors"></div>
+    </div>
+    <div id="nodeDetails"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+
+        class NetworkGraph3D {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.controls = null;
+                this.nodes = [];
+                this.edges = [];
+                this.raycaster = new THREE.Raycaster();
+                this.mouse = new THREE.Vector2();
+            }
+
+            init() {
+                // Create scene
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x1a1a2e);
+
+                // Setup camera
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.z = 500;
+
+                // Renderer
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                document.body.appendChild(this.renderer.domElement);
+
+                // Orbit Controls
+                this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0x404040);
+                this.scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+                directionalLight.position.set(1, 1, 1);
+                this.scene.add(directionalLight);
+
+                // Add interaction events
+                this.renderer.domElement.addEventListener('mousemove', this.onMouseMove.bind(this));
+                this.renderer.domElement.addEventListener('click', this.onMouseClick.bind(this));
+
+                this.animate();
+            }
+
+            createNetwork(nodeData, edgeData) {
+                // Clear existing network
+                this.nodes.forEach(node => this.scene.remove(node));
+                this.edges.forEach(edge => this.scene.remove(edge));
+                this.nodes = [];
+                this.edges = [];
+
+                // Normalize node positions
+                const positions = this.normalizePositions(nodeData);
+
+                // Create nodes
+                positions.forEach((pos, index) => {
+                    const geometry = new THREE.SphereGeometry(10, 32, 32);
+                    const material = new THREE.MeshPhongMaterial({
+                        color: this.getNodeColor(nodeData[index]),
+                        opacity: 0.8,
+                        transparent: true
+                    });
+                    const node = new THREE.Mesh(geometry, material);
+                    node.position.set(pos.x, pos.y, pos.z);
+                    node.userData = nodeData[index]; // Store original data
+                    this.scene.add(node);
+                    this.nodes.push(node);
+                });
+
+                // Create edges
+                edgeData.forEach(edge => {
+                    const startNode = this.nodes[edge.source];
+                    const endNode = this.nodes[edge.target];
+                    
+                    if (startNode && endNode) {
+                        const material = new THREE.LineBasicMaterial({
+                            color: 0x888888,
+                            opacity: 0.3,
+                            transparent: true
+                        });
+
+                        const geometry = new THREE.BufferGeometry().setFromPoints([
+                            startNode.position,
+                            endNode.position
+                        ]);
+
+                        const line = new THREE.Line(geometry, material);
+                        this.scene.add(line);
+                        this.edges.push(line);
+                    }
+                });
+            }
+
+            normalizePositions(nodeData) {
+                const xValues = nodeData.map(node => parseFloat(node.x || 0));
+                const yValues = nodeData.map(node => parseFloat(node.y || 0));
+                const zValues = nodeData.map(node => parseFloat(node.z || 0));
+
+                const xMin = Math.min(...xValues);
+                const xMax = Math.max(...xValues);
+                const yMin = Math.min(...yValues);
+                const yMax = Math.max(...yValues);
+                const zMin = Math.min(...zValues);
+                const zMax = Math.max(...zValues);
+
+                return nodeData.map((node, index) => ({
+                    x: THREE.MathUtils.mapLinear(parseFloat(node.x || 0), xMin, xMax, -200, 200),
+                    y: THREE.MathUtils.mapLinear(parseFloat(node.y || 0), yMin, yMax, -200, 200),
+                    z: THREE.MathUtils.mapLinear(parseFloat(node.z || 0), zMin, zMax, -200, 200)
+                }));
+            }
+
+            getNodeColor(nodeData) {
+                // Color nodes based on some attribute
+                const hue = this.hashCode(nodeData.category || 'default') % 360;
+                return new THREE.Color(`hsl(${hue}, 70%, 60%)`);
+            }
+
+            hashCode(str) {
+                let hash = 0;
+                for (let i = 0; i < str.length; i++) {
+                    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                    hash = hash & hash; // Convert to 32-bit integer
+                }
+                return Math.abs(hash);
+            }
+
+            onMouseMove(event) {
+                // Update mouse position
+                this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                this.mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+                // Raycasting for hover effects
+                this.raycaster.setFromCamera(this.mouse, this.camera);
+                const intersects = this.raycaster.intersectObjects(this.nodes);
+
+                if (intersects.length > 0) {
+                    document.body.style.cursor = 'pointer';
+                } else {
+                    document.body.style.cursor = 'default';
+                }
+            }
+
+            onMouseClick(event) {
+                this.raycaster.setFromCamera(this.mouse, this.camera);
+                const intersects = this.raycaster.intersectObjects(this.nodes);
+
+                if (intersects.length > 0) {
+                    const node = intersects[0].object;
+                    this.showNodeDetails(node.userData);
+                } else {
+                    document.getElementById('nodeDetails').style.display = 'none';
+                }
+            }
+
+            showNodeDetails(nodeData) {
+                const nodeDetailsDiv = document.getElementById('nodeDetails');
+                nodeDetailsDiv.style.display = 'block';
+                
+                // Create a formatted display of node details
+                const details = Object.entries(nodeData)
+                    .map(([key, value]) => `<div><strong>${key}:</strong> ${value}</div>`)
+                    .join('');
+                
+                nodeDetailsDiv.innerHTML = `
+                    <h3>Node Details</h3>
+                    ${details}
+                `;
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+            }
+
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        }
+
+        // Main application logic
+        const networkGraph = new NetworkGraph3D();
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            Papa.parse(file, {
+                header: true,
+                complete: (results) => {
+                    const data = results.data.filter(row => Object.keys(row).length > 0);
+                    
+                    if (data.length === 0) {
+                        alert('No valid data found in the CSV file.');
+                        return;
+                    }
+
+                    // Assume first CSV contains node data
+                    networkGraph.init();
+
+                    // Get node columns
+                    const nodeColumns = Object.keys(data[0]);
+
+                    // Create column selectors for nodes
+                    const columnSelectorsDiv = document.getElementById('columnSelectors');
+                    columnSelectorsDiv.innerHTML = `
+                        <h4>Node Columns</h4>
+                        <label>X Coordinate:</label>
+                        <select id="xColumn">${nodeColumns.map(col => `<option>${col}</option>`).join('')}</select>
+                        <label>Y Coordinate:</label>
+                        <select id="yColumn">${nodeColumns.map(col => `<option>${col}</option>`).join('')}</select>
+                        <label>Z Coordinate:</label>
+                        <select id="zColumn">${nodeColumns.map(col => `<option>${col}</option>`).join('')}</select>
+                        <button id="plotButton">Visualize Network</button>
+                    `;
+
+                    document.getElementById('plotButton').addEventListener('click', () => {
+                        const xCol = document.getElementById('xColumn').value;
+                        const yCol = document.getElementById('yColumn').value;
+                        const zCol = document.getElementById('zColumn').value;
+
+                        // Transform data to include x, y, z
+                        const nodeData = data.map(row => ({
+                            x: row[xCol],
+                            y: row[yCol],
+                            z: row[zCol],
+                            ...row
+                        }));
+
+                        // Placeholder for edge data (you'd typically load this from another CSV)
+                        const edgeData = nodeData.slice(0, nodeData.length - 1).map((node, index) => ({
+                            source: index,
+                            target: index + 1
+                        }));
+
+                        networkGraph.createNetwork(nodeData, edgeData);
+                    });
+                }
+            });
+        }
+
+        // Setup event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            const fileInput = document.getElementById('fileInput');
+            fileInput.addEventListener('change', handleFileUpload);
+            window.addEventListener('resize', () => networkGraph.onWindowResize());
+        });
+    </script>
+</body>
+</html>
