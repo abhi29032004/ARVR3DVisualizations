@@ -71,11 +71,14 @@ Date,Open,High,Low,Close,Volume
 ## Screenshots
 
 ### 3D Bar Graph
-![Bar Graph Example]()
-)
+![Bar Graph Example](./screenshots/bargraph.png)
 
 ### 3D Heatmap
-![Heatmap Example](https://via.placeholder.com/800x400)
+![Heatmap Example](./screenshots/heatmap.png)
+
+### 3D Surface Plot
+![Surface Plot Example](./screenshots/surfaceplot.png)
+
 
 (Include relevant screenshots for all visualizations.)
 
