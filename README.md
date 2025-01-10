@@ -71,7 +71,8 @@ Date,Open,High,Low,Close,Volume
 ## Screenshots
 
 ### 3D Bar Graph
-![Bar Graph Example](https://via.placeholder.com/800x400)
+![Bar Graph Example](![image](https://github.com/user-attachments/assets/c9ab27d9-e84e-43f3-8828-311283637507)
+)
 
 ### 3D Heatmap
 ![Heatmap Example](https://via.placeholder.com/800x400)
