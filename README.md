@@ -51,19 +51,7 @@ abhi29032004-ARVR3DVisualizations/
    cd abhi29032004-ARVR3DVisualizations
    ```
 
-2. Serve the files using a local server (optional):
-
-   - Using Python:
-     ```bash
-     python -m http.server
-     ```
-   - Using Node.js (with `http-server`):
-     ```bash
-     npx http-server
-     ```
-
-3. Open `index.html` or any specific `.html` file in your browser to view the visualizations.
-
+2.Run the Index.html file for the home page
 ## Data
 
 The project includes the `btc_2015_2024.csv` file, which contains Bitcoin price data from 2015 to 2024. This dataset is used for some of the visualizations (e.g., line graphs).
