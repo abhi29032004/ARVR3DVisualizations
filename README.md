@@ -51,7 +51,7 @@ abhi29032004-ARVR3DVisualizations/
    cd abhi29032004-ARVR3DVisualizations
    ```
 
-2.Run the Index.html file for the home page
+2. Run the Index.html file for the home page
 ## Data
 
 The project includes the `btc_2015_2024.csv` file, which contains Bitcoin price data from 2015 to 2024. This dataset is used for some of the visualizations (e.g., line graphs).
