@@ -8,7 +8,6 @@ This repository, **abhi29032004-ARVR3DVisualizations**, contains interactive 3D 
 ```plaintext
 abhi29032004-ARVR3DVisualizations/
 ├── bargraph.html        # 3D Bar Graph Visualization
-├── btc_2015_2024.csv    # Bitcoin historical data (2015-2024)
 ├── heatmap.html         # 3D Heatmap Visualization
 ├── index.html           # Main entry point for the project
 ├── linegraph.html       # 3D Line Graph Visualization
